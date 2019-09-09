@@ -1,0 +1,227 @@
+PROC SQL; /*고객별 구매횟수*/
+CREATE TABLE T.PUB_A AS
+SELECT DISTINCT CLIENT_NO, AGE_GROUP,COUNT(DISTINCT SALE_DATE) AS DATE
+, CASE WHEN 1<= CALCULATED DATE <4 THEN "1~3회"
+ WHEN 4<= CALCULATED DATE <7 THEN "4~6회"
+ WHEN 7<= CALCULATED DATE <10000 THEN "7회이상"
+END AS 구매횟수
+FROM T.FINAL_TR_AGE_SHOP
+WHERE (SUBSTR(SALE_DATE,1,6) BTEWEEN "201601" AND "201612")
+GROUP BY CLIENT_NO
+HAVING CALCULATED 구매횟수 = "1~3회"
+;
+QUIT;
+
+PROC SQL; /* 거래내역과 그룹 합치기 2016년 기준*/
+CREATE TABLE T.PUB_JA AS
+SELECT *
+FROM T.PUB_A AS A
+LEFT JOIN (SELECT * FROM T.FINAL_TR_AGE_SHOP WHERE SUBSTR(SALE_DATE,1,6) BTEWEEN "201601" AND "201612") AS B
+ON A.CLIENT_NO = B.CLIENT_NO
+;
+QUIT;
+
+PROC SQL; /* 그룹별 매출액구하기 */
+SELECT  SUBSTR(SALE_DATE,1,6) AS DATE
+, sum(BUY_AMT) as 매출액
+from t.pub_jA
+GROUP BY CALCULATED DATE
+;
+quit;
+
+PROC SQL; /* 그룹별 연령별 숫자구하기 */
+SELECT AGE_GROUP
+,COUNT(AGE_GROUP) AS 횟수
+FROM t.pub_C
+GROUP BY AGE_GROUP
+;
+QUIT;
+
+PROC SQL;/* 그룹별 구매물품 구하기 */
+CREATE TABLE T.JCG AS
+SELECT *
+FROM T.PUB_JC AS A
+LEFT JOIN
+(SELECT GOODS_CD,GOODS_CLS_CD FROM T.GOODS_NEW_SORT) AS B
+ON A.GOODS_CD = B.GOODS_CD
+;
+QUIT;
+
+PROC SQL;
+SELECT SUBSTR(SALE_DATE,1,6) AS SDATE
+, GOODS_CLS_CD
+, COUNT(DISTINCT GOODS_CLS_CD)
+FROM T.JAG
+GROUP BY CALCULATED SDATE, GOODS_CLS_CD
+;
+QUIT;
+PROC SQL;
+SELECT 
+ SUBSTR(DISTINCT(SALE_DATE),1,6) AS SDATE,GOODS_CLS_CD
+, COUNT( GOODS_CLS_CD)
+FROM T.JAG
+WHERE CLIENT_NO = "M03030191"
+GROUP BY CALCULATED SDATE,GOODS_CLS_CD
+;
+QUIT;
+PROC SQL;
+CREATE TABLE TR AS
+SELECT *
+FROM T.JAG
+ORDER BY SALE_DATE,CLIENT_NO
+;
+QUIT;
+----------------------------------------- ABC그룹 구하기 ---------------------------------------
+PROC SQL; /*고객별 구매횟수*/
+CREATE TABLE T.A15 AS
+SELECT DISTINCT CLIENT_NO, AGE_GROUP,COUNT(DISTINCT SALE_DATE) AS DATE
+, CASE WHEN 1<= CALCULATED DATE <4 THEN "1~3회"
+ WHEN 4<= CALCULATED DATE <7 THEN "4~6회"
+ WHEN 7<= CALCULATED DATE <10000 THEN "7회이상"
+END AS 구매횟수
+FROM T.FINAL_TR_AGE_SHOP
+WHERE (SUBSTR(SALE_DATE,1,6) BTEWEEN "201501" AND "201512")
+GROUP BY CLIENT_NO
+HAVING CALCULATED 구매횟수 = "1~3회"
+;
+QUIT;
+
+PROC SQL; /* 15년 고객들 -> 16년 고객들로 */
+CREATE TABLE T.C156 AS
+SELECT A.CLIENT_NO
+, A.AGE_GROUP
+,B.*
+FROM T.C15 AS A
+LEFT JOIN
+(SELECT * FROM T.FINAL_TR_AGE_SHOP 
+WHERE SUBSTR(SALE_DATE,1,6) BETWEEN "201601" AND "201612") AS B
+ON A.CLIENT_NO = B.CLIENT_NO
+;
+QUIT;
+
+PROC SQL; /*고객별 구매횟수*/
+CREATE TABLE T.C156Z AS
+SELECT DISTINCT CLIENT_NO, AGE_GROUP,COUNT(DISTINCT SALE_DATE) AS DATE
+, CASE WHEN 1<= CALCULATED DATE <4 THEN "1~3회"
+ WHEN 4<= CALCULATED DATE <7 THEN "4~6회"
+ WHEN 7<= CALCULATED DATE <10000 THEN "7회이상"
+ ELSE "이탈고객"
+END AS 구매횟수
+FROM T.C156
+GROUP BY CLIENT_NO
+HAVING CALCULATED 구매횟수 = "이탈고객"
+;
+QUIT;
+
+PROC SQL; /* 16년 고객들 -> 17년 고객들로 */
+CREATE TABLE T.C156Z7 AS
+SELECT A.CLIENT_NO
+, A.AGE_GROUP
+,B.*
+FROM T.C156Z AS A
+LEFT JOIN
+(SELECT * FROM T.FINAL_TR_AGE_SHOP 
+WHERE SUBSTR(SALE_DATE,1,6) BETWEEN "201701" AND "210712") AS B
+ON A.CLIENT_NO = B.CLIENT_NO
+;
+QUIT;
+
+PROC SQL; /*고객별 구매횟수*/
+CREATE TABLE T.C156Z7A AS/**/
+SELECT DISTINCT CLIENT_NO, AGE_GROUP,COUNT(DISTINCT SALE_DATE) AS DATE
+, CASE WHEN 1<= CALCULATED DATE <4 THEN "1~3회"
+ WHEN 4<= CALCULATED DATE <7 THEN "4~6회"
+ WHEN 7<= CALCULATED DATE <10000 THEN "7회이상"
+ ELSE "이탈고객"
+END AS 구매횟수
+FROM T.C156Z7/**/
+GROUP BY CLIENT_NO
+HAVING CALCULATED 구매횟수 = "1~3회" /**/
+;
+QUIT;
+
+
+------------------------------- ** 점 데이터 활용하기 ----------------------------------------------
+proc sql; /* **점 연간 매출현황*/
+create table test.VER_TR_years as
+select substr(sale_date,1,4) as date
+, sum(buy_qty) AS 판매량
+, sum(buy_amt) AS 판매금액
+from test.VER_TR_AGEdel
+group by date
+having date between "2014" and "2017"
+;
+quit;
+
+proc sql; /* **점 고객 나이 20세와 89세 사이로만 설정, 결측치 제거 */
+create table test.cust_by_agedel as
+select client_no,age,age_group
+from test.cust_by_age_st
+where age between 20 and 89
+;
+quit;
+
+proc sql; /* **점 거래내역(+상품코드) + 고객 연령 */
+create table test.ver_tr_age as
+(select a.*
+, b.client_no
+, b.age
+, b.age_group
+from test.ver_tr_sortbyclt as a
+left join test.cust_by_age_st as b
+on a.client_no = b.client_no);
+quit;
+
+proc sql; /* **점 연령대 별 매출현황*/
+create table test.VER_tr_age_ratio as
+select age_group
+, sum(buy_qty) as 판매량
+, sum(buy_amt) as 판매액
+from test.VER_TR_AGEDEL
+group by age_group
+;
+quit;
+PROC SQL; /* 연령대별 고객현황 */
+CREATE TABLE TEST.kajua_cust_by_agedel AS
+SELECT AGE_GROUP
+, COUNT(AGE_GROUP) AS 연령대수
+FROM TEST.count
+GROUP BY AGE_GROUP
+;
+QUIT;
+
+proc sql;
+create table test.count as
+select distinct client_no as client ,age,age_group
+from test.tr_kajua_gd_agedel
+;
+quit;
+
+proc sql; /* **점 물건별 판매량,금액 정리 */
+create table test.ver_tr_top as
+select goods_cls_cd
+, sum(buy_qty) as 판매량
+, sum(buy_amt) as 판매금액
+from test.VER_TR_AGEDEL
+group by goods_cls_cd
+order by 판매금액
+;
+quit;
+
+proc sql;
+create table test.ver_tr_del_gd as
+(select a.client_no,
+,a.occur_shop_cd
+,a.sale_date
+,a.age
+,a.age_group
+,a.goods_cd
+,b.goods_cls_cd
+,b.goods_dtl_cd
+,a.buy_qty
+,a.buy_amt
+from test.ver_tr_agedel as a
+left join select * from test.goods
+);
+quit;
+
