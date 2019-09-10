@@ -1,3 +1,7 @@
+SAS SQL 로 작성한 코드입니다.
+=========================================
+
+
 PROC SQL; /*고객별 구매횟수*/
 CREATE TABLE T.PUB_A AS
 SELECT DISTINCT CLIENT_NO, AGE_GROUP,COUNT(DISTINCT SALE_DATE) AS DATE
