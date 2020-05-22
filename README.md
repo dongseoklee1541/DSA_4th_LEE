@@ -1,5 +1,5 @@
 # DSA_4th_LEE
-DNI사회적협동조합에서 실시한 DSA(Data Science Academy)4기 A조 산출물입니다.
+DNI사회적협동조합에서 만든 DSA(Data Science Academy)4기 A조의 산출물입니다.
 
 ------
 ### 주제 : 유기농 매장의 구매내역 데이터를 활용하여 판매액 증가를 위한 마케팅 Insight 발굴 
